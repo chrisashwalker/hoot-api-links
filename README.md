@@ -1,6 +1,6 @@
 # Hoot Links API
 The links management service for [Hoot](https://github.com/chrisashwalker/hoot) - a tiny Human Resources management system built upon microservices. Manages the links/relationships between data objects.  
-Developed with Python Flask.
+Developed with NestJS.
 
 ## Install dependencies
 ```
