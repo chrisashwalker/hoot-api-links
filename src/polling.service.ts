@@ -9,7 +9,6 @@ export class PollingService {
 
   messageChannel = null;
   deletionQueue = 'deleted-objects';
-  pollTimer = null;
   service = null;
 
   constructor(){
@@ -25,25 +24,16 @@ export class PollingService {
             ch.assertQueue(this.deletionQueue);
           })
           .then(() => {
-            this.pollTimer = setInterval(this.pollQueue, 10000);
+            this.messageChannel.consume(this.deletionQueue, 
+              msg => {
+                this.handleDeletion(msg);
+                this.messageChannel.ack(msg);
+              }
+            );
           })
           .catch(err => {
             console.log('Failed to connect to message queues. ' + err);
           });
-  }
-
-  pollQueue = () => {
-    if (this.messageChannel) {
-      try {
-        this.messageChannel.consume(this.deletionQueue, msg => {
-          this.handleDeletion(msg);
-          this.messageChannel.ack(msg);
-        })
-      }
-      catch {
-        //clearInterval(pollTimer);
-      }
-    }
   }
 
   // Not good, but it will do for now!
