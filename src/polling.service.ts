@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AppService } from './app.service';
-import { PartialLink } from './model.link';
-import { LinkType } from './model.linktype';
+import { LinkType, PartialLink } from "./links/schemas/link.schema";
 var amqplib = require('amqplib');
 
 @Injectable()

@@ -7,13 +7,11 @@ export class LinksController {
   constructor(private readonly linksService: LinksService) {}
 
   @Get()
-  async findAll(): Promise<Link[]> {
+  async get(@Body() linkToFind: PartialLink): Promise<Link[]> {
+    if (linkToFind.objId > 0) {
+      return await this.linksService.findByObject(linkToFind);
+    }
     return await this.linksService.findAll();
-  }
-
-  @Get()
-  async findByObject(@Body() linkToFind: PartialLink): Promise<Link[]> {
-    return await this.linksService.findByObject(linkToFind);
   }
 
   @Post()

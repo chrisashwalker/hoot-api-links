@@ -11,13 +11,12 @@ export class LinksService {
   }
 
   async findAll(): Promise<Link[]> {
-    return await this.linkModel.find().exec();
+    return await this.linkModel.find({}, {'_id': false, '__v': false}).exec();
   }
 
   async findByObject(linkToFind: PartialLink): Promise<Link[]> {
-    var results = await this.linkModel.find().exec();
-    results.filter(l => linkToFind.type == l.type)
-    .filter(l => (!(linkToFind.objIsSecondary) && (linkToFind.objId == l.objId1))
+    var results = await this.linkModel.find({type: linkToFind.type}, {'_id': false, '__v': false}).exec();
+    results = results.filter(l => (!(linkToFind.objIsSecondary) && (linkToFind.objId == l.objId1))
                   || (linkToFind.objIsSecondary && (linkToFind.objId == l.objId2)));
     if (results.length > 0) {
       return results;
@@ -25,12 +24,16 @@ export class LinksService {
   }
 
   async create(link: Link): Promise<Link> {
+    var existingLink = await this.linkModel.findOne({type: link.type, objId1: link.objId1, objId2: link.objId2}).exec();
+    if (existingLink.objId1 > 0){
+      return;
+    }
     const newLink = new this.linkModel(link);
     return await newLink.save();
   }
 
   async delete(linkToDelete: Link): Promise<Link> {
-    var deleteId = -1;
+    var deleteId = '';
     var links = await this.linkModel.find({type: linkToDelete.type}).exec();
     links.forEach((l, idx) => 
       {
@@ -40,7 +43,7 @@ export class LinksService {
           deleteId = l.id;
         }
       });
-    if (deleteId > -1) {
+    if (deleteId != '') {
       return await this.linkModel.findByIdAndRemove(deleteId);
     }
   }
@@ -64,7 +67,7 @@ export class LinksService {
         .map((i) => 
         {
           var l = new Link;
-          l.type = LinkType.PERSONTOPOST;
+          l.type = LinkType.POSTTOTEAM;
           l.objId1 = i;
           l.objId2 = num - i;
           var newLink = new this.linkModel(l);
