@@ -15,84 +15,68 @@ export class LinksService {
     this.connectToMessaging();
   }
 
-  findAll(): Promise<Link[]> {
-    return this.linkModel.find({}, {'_id': false, '__v': false}).exec();
+  async findAll() : Promise<Link[]> {
+    return await this.linkModel.find({}, {'_id': false, '__v': false}).exec()
+    .then(l => { return l; })
   }
 
-  findByObject(linkToFind: PartialLink): Promise<Link[]> | void {
-    this.linkModel.find({type: linkToFind.type}, {'_id': false, '__v': false}).exec()
+  async findByObject(linkToFind: PartialLink) : Promise<Link[]> {
+    return await this.linkModel.find({type: linkToFind.type}, {'_id': false, '__v': false}).exec()
     .then(results => {
       results = results.filter(l => (!(linkToFind.objIsSecondary) && (linkToFind.objId == l.objId1))
                   || (linkToFind.objIsSecondary && (linkToFind.objId == l.objId2)));
       return results;
-    })
-    .catch(reason => {
-      return reason;
     });
   }
 
-  create(link: Link): Promise<Link> | void {
-    this.linkModel.findOne({type: link.type, objId1: link.objId1, objId2: link.objId2}).exec()
+  async create(link: Link) {
+    await this.linkModel.findOne({type: link.type, objId1: link.objId1, objId2: link.objId2}).exec()
     .then(existingLink => {
-      if (existingLink.objId1 > 0){
+      if (existingLink){
         return;
       }
       const newLink = new this.linkModel(link);
-      return newLink.save();
-    })
-    .catch(reason => {
-      return reason;
+      newLink.save();
     });
   }
 
-  delete(linkToDelete: Link): Promise<Link> | void {
-    var deleteId = '';
-    this.linkModel.find({type: linkToDelete.type}).exec()
-    .then(links => {
-      links.forEach(l => 
-      {
-        if ((l.objId1 == linkToDelete.objId1) &&
-            (l.objId2 == linkToDelete.objId2)) 
-        {
-          deleteId = l.id;
-        }
-      });
-      if (deleteId != '') {
-        return this.linkModel.findByIdAndRemove(deleteId);
+  async delete(linkToDelete: Link) {
+    await this.linkModel.deleteOne({
+      type: linkToDelete.type,
+      objId1: linkToDelete.objId1,
+      objId2: linkToDelete.objId1
+    }).exec();
+  }
+
+  initDatabase() {
+    this.linkModel.estimatedDocumentCount()
+    .then(count => {
+      if (count < 1) {
+        const num = 5;
+        [...Array(num).keys()]
+          .slice(1)
+          .map((i) => 
+          {
+            var l = new Link;
+            l.type = LinkType.PERSONTOPOST;
+            l.objId1 = i;
+            l.objId2 = num - i;
+            var newLink = new this.linkModel(l);
+            newLink.save();
+          });
+        [...Array(num).keys()]
+          .slice(1)
+          .map((i) => 
+          {
+            var l = new Link;
+            l.type = LinkType.POSTTOTEAM;
+            l.objId1 = i;
+            l.objId2 = num - i;
+            var newLink = new this.linkModel(l);
+            newLink.save();
+          });
       }
-    })
-    .catch(reason => {
-      return reason;
     });
-    
-  }
-
-  async initDatabase() {
-    if ((await this.linkModel.estimatedDocumentCount()) < 1){
-      const num = 5;
-      [...Array(num).keys()]
-        .slice(1)
-        .map((i) => 
-        {
-          var l = new Link;
-          l.type = LinkType.PERSONTOPOST;
-          l.objId1 = i;
-          l.objId2 = num - i;
-          var newLink = new this.linkModel(l);
-          newLink.save();
-        });
-      [...Array(num).keys()]
-        .slice(1)
-        .map((i) => 
-        {
-          var l = new Link;
-          l.type = LinkType.POSTTOTEAM;
-          l.objId1 = i;
-          l.objId2 = num - i;
-          var newLink = new this.linkModel(l);
-          newLink.save();
-        });
-    }
   }
 
   connectToMessaging() {
@@ -136,18 +120,21 @@ export class LinksService {
       default:
         return;
     }
-    var search = this.findByObject(searchObj);
-    if (search instanceof Array) {
-      search.forEach(l => { this.delete(l) });
-    }
-
+    this.linkModel.find({type: searchObj.type}, {'_id': false, '__v': false}).exec()
+    .then(results => {
+      results = results.filter(l => (!(searchObj.objIsSecondary) && (searchObj.objId == l.objId1))
+                  || (searchObj.objIsSecondary && (searchObj.objId == l.objId2)));
+      results.forEach(l => { this.delete(l) });
+    });
+    
+    // Repeat if it's a post, as there are two possible link types
     if (msgObj.type == 'post'){
-      searchObj.type = LinkType.POSTTOTEAM;
-      searchObj.objIsSecondary = false;
-      search = this.findByObject(searchObj);
-      if (search instanceof Array) {
-        search.forEach(l => { this.delete(l) });
-      }
+      this.linkModel.find({type: searchObj.type}, {'_id': false, '__v': false}).exec()
+      .then(results => {
+        results = results.filter(l => (!(searchObj.objIsSecondary) && (searchObj.objId == l.objId1))
+                    || (searchObj.objIsSecondary && (searchObj.objId == l.objId2)));
+        results.forEach(l => { this.delete(l) });
+      });
     }
   }
 
